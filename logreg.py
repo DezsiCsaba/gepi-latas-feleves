@@ -3,7 +3,7 @@ import torch.optim as optim
 from NN import neuralNetwork
 
 
-class LinearRegressionNN():
+class LogisticRegressionNN():
     def __init__(self):
         self.activation_fn = nn.ReLU
         self.network = nn.Sequential(
@@ -11,15 +11,15 @@ class LinearRegressionNN():
             self.activation_fn(),
             nn.Linear(10, 10),
             self.activation_fn(),
-            nn.Linear(10, 1),
-        )        
-        self.loss_fn = nn.L1Loss() #MAE
+            nn.Linear(10, 1)
+        )
+        self.loss_fn = nn.L1Loss()  # MAE
         self.opt_fn = optim.Adam(self.network.parameters(), lr=0.0015)
-    
+
     def createLinRegModel(self):
-        self.linreg = neuralNetwork(network = self.network)
-        
-    def trainNetwork(self, X_train_raw, y_train, X_test_raw, y_test, epochs = 150, batch_num=10, iteration=1):
+        self.linreg = neuralNetwork(network=self.network)
+
+    def trainNetwork(self, X_train_raw, y_train, X_test_raw, y_test, epochs=150, batch_num=10, iteration=1):
         iterHistory = []
         for i in range(iteration):
             self.linreg.setTrainTestDatas(X_train_raw, y_train, X_test_raw, y_test)

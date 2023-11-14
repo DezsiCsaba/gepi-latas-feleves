@@ -23,7 +23,7 @@ class neuralNetwork():
         self.X_test = torch.tensor(x_test, dtype=torch.float32)
         self.y_test = torch.tensor(y_test.values, dtype=torch.float32).reshape(-1, 1)
 
-    def fit(self, epochs, batch_size, disableTrainBars, loss_fn, opt_fn, iter, iterHistory):
+    def fit(self, epochs, batch_size, disableTrainBars, loss_fn, opt_fn, iter, iterHistory, saveAs):
         batch_start = torch.arange(0, len(self.X_train), batch_size)
 
         self.best_MAE = np.inf   # init to infinity
@@ -60,10 +60,10 @@ class neuralNetwork():
                 if (self.best_MAE < self.global_best_MAE):
                     self.global_best_MAE = self.best_MAE
                     #torch.save(self.model.state_dict(), 'models/LinRegNN_best.pt')
-                    torch.save(self.model.state_dict(), 'models/LinRegNN.pt')
+                    torch.save(self.model.state_dict(), f'models/{saveAs}.pt')
                     #print('\tNEW BEST MODEL! :)')
                 else: 
-                    torch.save(self.model.state_dict(), 'models/LinRegNN.pt')
+                    torch.save(self.model.state_dict(), f'models/{saveAs}.pt')
             
             if (disableTrainBars==True):
                 print(f'{epoch+1}.epoch -> MAE: {round(MAE, 3)}')
@@ -81,9 +81,9 @@ class neuralNetwork():
         plt.plot(self.history)
         plt.show()
 
-    def compareWithBest(self, X_test_raw, y_test, sample_size, defaultNetwork):
-        best = torch.load('models/LinRegNN_best.pt')
-        loaded = torch.load('models/LinRegNN.pt')
+    def compareWithBest(self, X_test_raw, y_test, sample_size, defaultNetwork, bestPath, modelPath):
+        best = torch.load(f'models/{bestPath}.pt')
+        loaded = torch.load(f'models/{modelPath}.pt')
 
         bestReg = neuralNetwork(defaultNetwork)
         bestReg.model.load_state_dict(best)
