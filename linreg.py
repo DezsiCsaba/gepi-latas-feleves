@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch.optim as optim
 from NN import neuralNetwork
+import torch.onnx
 
 
 class LinearRegressionNN():
@@ -57,3 +58,19 @@ class LinearRegressionNN():
 
     def evaluateModel(self, X_test_raw, y_test):
         self.linreg.evaluate(X_test_raw, y_test, 10)
+
+    def export_to_ONNX_model(self):
+        '''If model is not a torch.jit.ScriptModule nor
+            a torch.jit.ScriptFunction, this runs model once in order to
+            convert it to a TorchScript graph to be exported''' #-> ezért adunk be neki inputot, hogy tudjon futni ha kell neki
+
+        self.linreg.model.eval()
+        X_test = self.linreg.X_test
+
+        torch.onnx.export(
+            self.linreg.model,
+            X_test[0: 6],
+            "models/linreg_OnnxModel.onnx", # where to save the model
+            export_params = True, # store the trained parameter weights inside the model file
+            opset_version = 10 #onnx version to export to
+)
