@@ -93,7 +93,8 @@
 
     console.log(`platform = ${platformInt},\ngenre = ${genreInt},\neditor's choice = ${editorsChoiceInt}`)
 
-    await this.test()
+    await test()
+    await pred()
   }
 
   const platformList = []
@@ -116,42 +117,43 @@
     platformInt, genreInt, editorsChoiceInt
   })
 
+  async function pred(){
+    try{
+      const session = await InferenceSession.create(
+          './public/onnx_model.onnx',
+          {
+            executionProviders: ["webgl"]
+          }
+      )
+      const inputs = new Tensor('float32', Float32Array.from([platformInt, genreInt, editorsChoiceInt, 2010, 1, 1]), [1,6])
+      const outputMap = await session.run({'onnx::Gemm_0': inputs})
+
+      let y_pred
+      Object.keys(outputMap).forEach((key) => y_pred = outputMap[key].data[0])
+      console.log({
+        inputs: inputs.data,
+        y_pred: y_pred
+      })
+      console.log(`y_pred: ${y_pred.toString().slice(0, 7)}`)
+    }catch (err){
+      console.error(err.stack)
+    }
+  }
+
   async function test(){
-    // console.log('test')
-    // try{
-    //   const session = await InferenceSession.create('../../../onnx_model.onnx',{
-    //     executionProviders: ["webgl"],
-    //   })
-    //   console.log('model imported')
-    //
-    //   const inputs = [
-    //     new Tensor(new Float32Array([platformInt, genreInt, editorsChoiceInt, 2012.0, 9.0, 12.0]))
-    //   ]
-    //
-    //   console.log({inputTensor: inputs})
-    //   const outputMap = await session.run(inputs)
-    //   const outputTensor = outputMap.values().next().value
-    //
-    //   console.log(outputTensor)
-    // }catch (err){
-    //   console.error(err.stack)
-    // }
     const session = await InferenceSession.create(
         './public/onnx_model.onnx',
         {
           executionProviders: ["webgl"]
         }
     )
-    console.log('model imported')
 
     const inputs = new Tensor('float32', Float32Array.from([1, 1, 1, 1, 1, 1]), [1,6])
-    console.log(inputs)
-
     const outputMap = await session.run({'onnx::Gemm_0': inputs})
 
     let y_pred = null
     Object.keys(outputMap).forEach((key) => y_pred = outputMap[key].data[0])
-    console.log(y_pred)
+    console.log(`test y_pred: ${y_pred.toString().slice(0, 7)}`)
   }
 
 
