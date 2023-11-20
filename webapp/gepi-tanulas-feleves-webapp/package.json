@@ -8,6 +8,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "onnxjs": "^0.1.8",
     "quasar": "^2.14.0",
     "vue": "^3.3.4",
     "vuetify": "^3.3.12"

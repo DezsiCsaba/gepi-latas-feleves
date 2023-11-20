@@ -13,7 +13,7 @@
             <v-card-title>Inputs of the model</v-card-title>
             <v-form style="margin: 15px">
               <v-autocomplete
-                  v-model="this.selectedPlatform"
+                  v-model="selectedPlatform"
                   variant="underlined"
                   density="compact"
                   base-color="primary"
@@ -22,7 +22,7 @@
                   :items="platformList"
               ></v-autocomplete>
               <v-autocomplete
-                  v-model="this.selectedGenre"
+                  v-model="selectedGenre"
                   variant="underlined"
                   density="compact"
                   base-color="primary"
@@ -31,21 +31,23 @@
                   :items="genreList"
               ></v-autocomplete>
 
-              Editors's choice Y/N:
               <v-switch
+                  v-model="selectedEditorsChoice"
+                  :inset="true"
+                  label="Editor's choice (Y/N)"
               ></v-switch>
 
               Date of release:
               <v-date-picker></v-date-picker>
             </v-form>
-
-            <v-btn
-                @click="setUpPredictData(this.selectedPlatform, this.selectedGenre)"
-            >Predict</v-btn>
           </v-card>
 
           <v-card style="width: max-content">
             <v-card-title>The model's prediction</v-card-title>
+
+            <v-btn
+                @click="setUpPredictData()"
+            >Prediction test</v-btn>
           </v-card>
         </div>
       </v-main>
@@ -56,9 +58,9 @@
 <script setup>
   import platformNames from '../../../service/platformName.json'
   import genreNames from '../../../service/genreName.json'
-  import editorsChoice from '../../../service/editorsChoice.json'
-  import {onBeforeMount} from "vue";
-  import {tr} from "vuetify/locale";
+  // import editorsChoice from '../../../service/editorsChoice.json'
+  import {onBeforeMount, ref} from "vue";
+  import {InferenceSession, Tensor} from "onnxruntime-web";
 
   //#region Lists
   function setLists(){
@@ -69,9 +71,6 @@
     Object.keys(genreNames).forEach((key) => {
       genreIndexes.push(key)
       genreList.push(genreNames[key])
-    })
-    Object.keys(editorsChoice).forEach((key) => {
-      editorsChoiceIndexes.push(key)
     })
   }
   function getMatchingIndex(lookup, input){
@@ -84,34 +83,82 @@
     })
     return keyVal
   }
-  function setUpPredictData(selectedPlatform, selectedGenre){
-    let platformI = getMatchingIndex(platformNames, selectedPlatform)
-    let genreI = getMatchingIndex(genreNames, selectedGenre)
+  async function setUpPredictData() {
+    console.clear()
+    console.log(selectedEditorsChoice.value)
 
-    console.log(`${platformI}: ${selectedPlatform}, ${genreI}: ${selectedGenre}`)
+    platformInt = getMatchingIndex(platformNames, selectedPlatform.value)
+    genreInt = getMatchingIndex(genreNames, selectedGenre.value)
+    editorsChoiceInt = selectedEditorsChoice.value === true ?10 : 20
+
+    console.log(`platform = ${platformInt},\ngenre = ${genreInt},\neditor's choice = ${editorsChoiceInt}`)
+
+    await this.test()
   }
 
   const platformList = []
   const platformIndexes = []
   const genreList = []
   const genreIndexes = []
-  const editorsChoiceOptions = [true, false]
-  const editorsChoiceIndexes = []
   //#endregion
+
+  let selectedPlatform = ref('PlayStation 4')
+  let selectedGenre = ref('Adventure, RPG')
+  let selectedEditorsChoice = ref(true)
+
+  let platformInt
+  let genreInt
+  let editorsChoiceInt
+
+  defineExpose({
+    selectedPlatform, selectedGenre, selectedEditorsChoice,
+
+    platformInt, genreInt, editorsChoiceInt
+  })
+
+  async function test(){
+    // console.log('test')
+    // try{
+    //   const session = await InferenceSession.create('../../../onnx_model.onnx',{
+    //     executionProviders: ["webgl"],
+    //   })
+    //   console.log('model imported')
+    //
+    //   const inputs = [
+    //     new Tensor(new Float32Array([platformInt, genreInt, editorsChoiceInt, 2012.0, 9.0, 12.0]))
+    //   ]
+    //
+    //   console.log({inputTensor: inputs})
+    //   const outputMap = await session.run(inputs)
+    //   const outputTensor = outputMap.values().next().value
+    //
+    //   console.log(outputTensor)
+    // }catch (err){
+    //   console.error(err.stack)
+    // }
+    const session = await InferenceSession.create(
+        './public/onnx_model.onnx',
+        {
+          executionProviders: ["webgl"]
+        }
+    )
+    console.log('model imported')
+
+    const inputs = new Tensor('float32', Float32Array.from([1, 1, 1, 1, 1, 1]), [1,6])
+    console.log(inputs)
+
+    const outputMap = await session.run({'onnx::Gemm_0': inputs})
+
+    let y_pred = null
+    Object.keys(outputMap).forEach((key) => y_pred = outputMap[key].data[0])
+    console.log(y_pred)
+  }
+
+
 
   onBeforeMount(()=> {
     setLists()
   })
-</script>
-
-<script>
-export default {
-  data(){return{
-    selectedPlatform: 'PlayStation Vita',
-    selectedGenre: 'Platformer',
-    selectedEditorsChoice: ''
-  }}
-}
 </script>
 
 <style scoped>
