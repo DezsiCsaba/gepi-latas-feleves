@@ -46,7 +46,7 @@
             <v-card-title>The model's prediction</v-card-title>
 
             <v-btn
-                @click="setUpPredictData()"
+                @click="runTheModel()"
             >Prediction test</v-btn>
           </v-card>
         </div>
@@ -56,13 +56,42 @@
 </template>
 
 <script setup>
+  const showInnerLogs = false
+  const showFunctionLogs = false
+  const showPredVal = true
+
   import platformNames from '../../../service/platformName.json'
   import genreNames from '../../../service/genreName.json'
   // import editorsChoice from '../../../service/editorsChoice.json'
+  import scalerImport from '../../../service/sk_scaler.json'
+
   import {onBeforeMount, ref} from "vue";
   import {InferenceSession, Tensor} from "onnxruntime-web";
+  import * as tf from '@tensorflow/tfjs'
+  import * as sk from 'scikitjs'
 
-  //#region Lists
+  //#region props
+  const platformList = []
+  const platformIndexes = []
+  const genreList = []
+  const genreIndexes = []
+
+  let selectedPlatform = ref('PlayStation 4')
+  let selectedGenre = ref('Adventure, RPG')
+  let selectedEditorsChoice = ref(true)
+
+  let platformInt
+  let genreInt
+  let editorsChoiceInt
+
+  defineExpose({
+    selectedPlatform, selectedGenre, selectedEditorsChoice,
+
+    platformInt, genreInt, editorsChoiceInt
+  })
+  //#endregion
+
+  //#region getDataFromFrontEnd
   function setLists(){
     Object.keys(platformNames).forEach((key) => {
       platformIndexes.push(key)
@@ -83,41 +112,49 @@
     })
     return keyVal
   }
-  async function setUpPredictData() {
+  function setUpPredictData() {
     console.clear()
-    console.log(selectedEditorsChoice.value)
+    logFunctinStart('The input from the front:')
 
     platformInt = getMatchingIndex(platformNames, selectedPlatform.value)
     genreInt = getMatchingIndex(genreNames, selectedGenre.value)
     editorsChoiceInt = selectedEditorsChoice.value === true ?10 : 20
 
-    console.log(`platform = ${platformInt},\ngenre = ${genreInt},\neditor's choice = ${editorsChoiceInt}`)
-
-    await test()
-    await pred()
+    logInsideOfFunction(`platform = ${platformInt},\n\tgenre = ${genreInt},\n\teditor's choice = ${editorsChoiceInt}`)
   }
-
-  const platformList = []
-  const platformIndexes = []
-  const genreList = []
-  const genreIndexes = []
   //#endregion
 
-  let selectedPlatform = ref('PlayStation 4')
-  let selectedGenre = ref('Adventure, RPG')
-  let selectedEditorsChoice = ref(true)
+  async function preProcessData() {
+    logFunctinStart('Preprocessing data')
+    // const standardScaler = createScaler()
 
-  let platformInt
-  let genreInt
-  let editorsChoiceInt
+    let scaler = new sk.StandardScaler()
 
-  defineExpose({
-    selectedPlatform, selectedGenre, selectedEditorsChoice,
+    let x = [[1, 1, 10, 2010, 1, 1]]
 
-    platformInt, genreInt, editorsChoiceInt
-  })
+    scaler.withMean = scalerImport.with_mean
+    scaler.withStd = scalerImport.with_std
+    scaler.copy = scalerImport.copy
+    scaler.featureNamesIn = scalerImport.feature_names_in_
+    scaler.nFeaturesIn = scalerImport.n_features_in_
+    scaler.nSamplesSeen = scalerImport.n_samples_seen_
+    scaler.mean = tf.tensor(scalerImport.mean_)
+    scaler.scale = tf.tensor(scalerImport.scale_)
 
-  async function pred(){
+    let transformed = await scaler.transform(x).data()
+
+    return new Tensor('float32', Float32Array.from(transformed), [1, 6])
+  }
+
+  async function runTheModel(){
+    setUpPredictData()
+    const x_test = await preProcessData()
+
+    await pred(x_test)
+  }
+
+  async function pred(inputData){
+    logFunctinStart('Prediction with input data')
     try{
       const session = await InferenceSession.create(
           './public/onnx_model.onnx',
@@ -125,22 +162,22 @@
             executionProviders: ["webgl"]
           }
       )
-      const inputs = new Tensor('float32', Float32Array.from([platformInt, genreInt, editorsChoiceInt, 2010, 1, 1]), [1,6])
-      const outputMap = await session.run({'onnx::Gemm_0': inputs})
 
-      let y_pred
+      console.log({inputData: inputData})
+      const outputMap = await session.run({'onnx::Gemm_0': inputData})
+
+      let y_pred = null
       Object.keys(outputMap).forEach((key) => y_pred = outputMap[key].data[0])
-      console.log({
-        inputs: inputs.data,
-        y_pred: y_pred
-      })
-      console.log(`y_pred: ${y_pred.toString().slice(0, 7)}`)
+
+      logYpred({inputs: inputData.data, y_pred: y_pred})
+      logYpred(`${y_pred.toString().slice(0, 7)}`)
     }catch (err){
       console.error(err.stack)
     }
   }
 
   async function test(){
+    logFunctinStart('test prediction with tensor.ones')
     const session = await InferenceSession.create(
         './public/onnx_model.onnx',
         {
@@ -153,13 +190,33 @@
 
     let y_pred = null
     Object.keys(outputMap).forEach((key) => y_pred = outputMap[key].data[0])
-    console.log(`test y_pred: ${y_pred.toString().slice(0, 7)}`)
+
+    logYpred(`${y_pred.toString().slice(0, 7)}`)
   }
 
+  function createArrayFromJSON(jsonObj){
+    let out = []
+    Object.keys(jsonObj).forEach((key) => {
+      out.push(jsonObj[key])
+    })
+    return out
+  }
 
+  //#region loggers
+  function logFunctinStart(input){
+    showFunctionLogs && console.log('>>>', input)
+  }
+  function logInsideOfFunction(input){
+    showInnerLogs && console.log('\t', input)
+  }
+  function logYpred(input){
+    showPredVal && console.log('\t< pred >', input)
+  }
+  //#endregion
 
   onBeforeMount(()=> {
     setLists()
+    sk.setBackend(tf)
   })
 </script>
 
