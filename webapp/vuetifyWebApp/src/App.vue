@@ -7,64 +7,80 @@
         >
           <v-app-bar-title>Féléves Feladat Demo APP</v-app-bar-title>
         </v-app-bar>
-
-
-
         <v-main>
-          <div style="display: flex">
-            <v-card style="width: max-content">
+          <div style="display: flex; flex-direction: row; align-items: flex-start">
+            <v-card style="width: 100%; padding: 20px; margin: 10px">
               <v-card-title>Inputs of the model</v-card-title>
               <v-form style="margin: 15px">
-                <v-autocomplete
-                  v-model="selectedPlatform"
-                  variant="underlined"
-                  density="compact"
-                  label="Platform"
-                  :items="platformList"
-                  :hide-selected="true"
+                <v-timeline
+                  align="center"
+                  side="end"
+                  direction="vertical"
                 >
-                  <template v-slot:item="{ props }">
-                    <v-list-item
-                      v-bind="props"
-                      :base-color="props ? 'primary' : 'secondary'"
-                    >
-                    </v-list-item>
-                  </template>
-                </v-autocomplete>
-                <v-autocomplete
-                  v-model="selectedGenre"
-                  variant="underlined"
-                  density="compact"
-                  base-color="primary"
-                  label="Genre"
-                  :items="genreList"
-                  :hide-selected="true"
-                ></v-autocomplete>
+                  <v-timeline-item dot-color="primary">
+                    <v-autocomplete
+                      v-model="selectedPlatform"
+                      variant="underlined"
+                      density="compact"
+                      base-color="primary"
+                      label="Platform"
+                      :items="platformList"
+                      :hide-selected="true"
+                    ></v-autocomplete>
+                  </v-timeline-item>
 
-                <v-switch
-                  v-model="selectedEditorsChoice"
-                  :inset="true"
-                  label="Editor's choice (Y/N)"
-                ></v-switch>
+                  <v-timeline-item dot-color="primary">
+                    <v-autocomplete
+                      v-model="selectedGenre"
+                      variant="underlined"
+                      density="compact"
+                      base-color="primary"
+                      label="Genre"
+                      :items="genreList"
+                      :hide-selected="true"
+                    ></v-autocomplete>
+                  </v-timeline-item>
 
-                <!--              Date of release:-->
-                <!--              <v-date-picker></v-date-picker>-->
+
+                  <v-timeline-item dot-color="primary">
+                    <v-card-title>Editor's choice (Y/N)</v-card-title>
+                    <v-switch
+                      v-model="selectedEditorsChoice"
+                      :inset="true"
+                    ></v-switch>
+                  </v-timeline-item>
+
+
+                  <v-timeline-item dot-color="primary">
+                    <v-card-title>Date of release:</v-card-title>
+                    <v-date-picker></v-date-picker>
+                  </v-timeline-item>
+
+                </v-timeline>
               </v-form>
             </v-card>
 
-            <v-card style="width: max-content">
+            <v-card style="width: 100%; padding: 20px; margin: 10px">
               <v-card-title>The model's prediction</v-card-title>
+              <v-form>
+                <v-hover>
+                  <template v-slot:default="{ isHovering, props }">
+                    <v-btn
+                      v-bind="props"
+                      :color="isHovering ? 'secondary' : 'primary'"
+                      style="cursor: pointer"
+                      @click="runTheModel"
+                    >Prediction test</v-btn>
+                  </template>
+                </v-hover>
 
-              <v-hover>
-                <template v-slot:default="{ isHovering, props }">
-                  <v-btn
-                    v-bind="props"
-                    :color="isHovering ? 'primary' : 'primary'"
-                    style="cursor: pointer"
-                    @click="runTheModel()"
-                  >Prediction test</v-btn>
-                </template>
-              </v-hover>
+                <v-card-text>The predicted value:</v-card-text>
+                <v-text-field
+                  :readonly="true"
+                  v-model="prediction"
+                ></v-text-field>
+              </v-form>
+
             </v-card>
           </div>
         </v-main>
@@ -98,6 +114,7 @@ const genreIndexes = []
 let selectedPlatform = ref('PlayStation 4')
 let selectedGenre = ref('Adventure, RPG')
 let selectedEditorsChoice = ref(true)
+let prediction = ref('NAN')
 
 let platformInt
 let genreInt
@@ -149,7 +166,8 @@ async function preProcessData() {
 
   let scaler = new sk.StandardScaler()
 
-  let x = [[1, 1, 10, 2010, 1, 1]]
+  let x_test = [[1, 1, 10, 2010, 1, 1]]
+  let x = [[+platformInt, +genreInt, +editorsChoiceInt, 2010, 1, 1]]
 
   scaler.withMean = scalerImport.with_mean
   scaler.withStd = scalerImport.with_std
@@ -160,6 +178,7 @@ async function preProcessData() {
   scaler.mean = tf.tensor(scalerImport.mean_)
   scaler.scale = tf.tensor(scalerImport.scale_)
 
+  //let transformed = await scaler.transform(x_test).data()
   let transformed = await scaler.transform(x).data()
 
   return new Tensor('float32', Float32Array.from(transformed), [1, 6])
@@ -168,8 +187,7 @@ async function preProcessData() {
 async function runTheModel(){
   setUpPredictData()
   const x_test = await preProcessData()
-
-  await pred(x_test)
+  prediction.value = await pred(x_test)
 }
 
 async function pred(inputData){
@@ -190,6 +208,7 @@ async function pred(inputData){
 
     logYpred({inputs: inputData.data, y_pred: y_pred})
     logYpred(`${y_pred.toString().slice(0, 7)}`)
+    return `${y_pred.toString().slice(0, 7)}`
   }catch (err){
     console.error(err.stack)
   }
