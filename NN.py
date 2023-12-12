@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import joblib
 import pickle
 import json
-import sklearn_json as skljson
+#import sklearn_json as skljson
 
 class neuralNetwork():
     def __init__(self, network:nn.Sequential = None):
@@ -165,9 +165,9 @@ class neuralNetwork():
         plt.plot(exp, 'b', linewidth=1)
         plt.plot(inf, 'r', linewidth=2)
         plt.show()
-        print(f'AVG absolute inference:{np.mean(inf)}')
-        print(f'MAX absolute inference:{np.max(inf)}')
-        print(f'MIN absolute inference:{np.min(inf)}')
+        print(f'AVG MAE:{np.mean(inf)}')
+        print(f'MAX MAE:{np.max(inf)}')
+        print(f'MIN MAE:{np.min(inf)}')
 
 
     def saveScaler(self):
