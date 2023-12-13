@@ -235,7 +235,7 @@
     logFunctinStart('Prediction with input data')
     try{
       const session = await InferenceSession.create(
-        './public/onnx_model.onnx',
+        '/onnx_model.onnx',
         {
           executionProviders: ["webgl"]
         }
@@ -258,7 +258,7 @@
   async function test(){
     logFunctinStart('test prediction with tensor.ones')
     const session = await InferenceSession.create(
-      './public/onnx_model.onnx',
+      '/onnx_model.onnx',
       {
         executionProviders: ["webgl"]
       }
