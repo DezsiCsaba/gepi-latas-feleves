@@ -9,15 +9,17 @@
         </v-app-bar>
         <v-main>
           <div style="display: flex; flex-direction: row; align-items: flex-start">
-            <v-card style="width: 100%; padding: 20px; margin: 10px">
-              <v-card-title>Inputs of the model</v-card-title>
-              <v-form style="margin: 15px">
+            <div style="width: 100%; padding: 20px 300px 20px 300px; margin: 10px; display: flex; align-items: start; flex-direction: column">
+
+              <v-card style="width: 100%; height: 100%; margin: 10px; padding: 20px; display: flex; justify-items: start; flex-direction: column">
+                <v-card-title>Inputs of the model</v-card-title>
                 <v-timeline
-                  align="center"
+                  align="start"
+                  line-inset="10px"
                   side="end"
-                  direction="vertical"
+                  style="justify-content: left; grid-template-columns: .01fr .1fr 1fr; width: 100%"
                 >
-                  <v-timeline-item dot-color="primary">
+                  <v-timeline-item dot-color="primary" width="100%">
                     <v-card-title>Platform and Genre</v-card-title>
                     <v-autocomplete
                       v-model="selectedPlatform"
@@ -41,7 +43,7 @@
                     ></v-autocomplete>
                   </v-timeline-item>
 
-                  <v-timeline-item dot-color="primary">
+                  <v-timeline-item dot-color="primary" width="100%">
                     <v-card-title>Editor's choice (Y/N)</v-card-title>
                     <v-switch
                       v-model="selectedEditorsChoice"
@@ -50,7 +52,7 @@
                     ></v-switch>
                   </v-timeline-item>
 
-                  <v-timeline-item dot-color="primary">
+                  <v-timeline-item dot-color="primary" width="100%">
                     <v-card-title>Date of release:</v-card-title>
 
                     <v-menu
@@ -76,31 +78,32 @@
                   </v-timeline-item>
 
                 </v-timeline>
-              </v-form>
-            </v-card>
+              </v-card>
 
-            <v-card style="width: 100%; padding: 20px; margin: 10px">
-              <v-card-title>The model's prediction</v-card-title>
-              <v-form>
-                <v-hover>
-                  <template v-slot:default="{ isHovering, props }">
-                    <v-btn
-                      v-bind="props"
-                      :color="isHovering ? 'secondary' : 'primary'"
-                      style="cursor: pointer"
-                      @click="runTheModel"
-                    >Prediction test</v-btn>
-                  </template>
-                </v-hover>
+              <v-card style="width: 100%; padding: 20px; margin: 10px">
+                <v-card-title>The model's prediction</v-card-title>
+                <v-form>
+                  <v-hover>
+                    <template v-slot:default="{ isHovering, props }">
+                      <v-btn
+                        v-bind="props"
+                        :color="isHovering ? 'secondary' : 'primary'"
+                        style="cursor: pointer"
+                        @click="runTheModel"
+                      >Prediction test</v-btn>
+                    </template>
+                  </v-hover>
 
-                <v-card-text>The predicted value:</v-card-text>
-                <v-text-field
-                  :readonly="true"
-                  v-model="prediction"
-                ></v-text-field>
-              </v-form>
+                  <v-card-text>The predicted value:</v-card-text>
+                  <v-text-field
+                    :readonly="true"
+                    v-model="prediction"
+                  ></v-text-field>
+                </v-form>
+              </v-card>
+            </div>
 
-            </v-card>
+
           </div>
         </v-main>
       </v-layout>
