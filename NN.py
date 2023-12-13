@@ -8,6 +8,11 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt 
 
+import joblib
+import pickle
+import json
+#import sklearn_json as skljson
+
 class neuralNetwork():
     def __init__(self, network:nn.Sequential = None):
         self.model = network
@@ -15,7 +20,13 @@ class neuralNetwork():
     def setTrainTestDatas(self, X_train_raw, y_train, X_test_raw, y_test):
         self.scaler = StandardScaler()
         self.scaler.fit(X_train_raw)
+
+        print('before scaling:', X_train_raw[0:1])
         x_train =self.scaler.transform(X_train_raw)
+        print('after scaling:', x_train[0:1])
+        print('x_train shape before:',np.shape(X_train_raw[0:1]))
+        print('x_train shape after:',np.shape(x_train[0:1]))
+
         x_test = self.scaler.transform(X_test_raw)
 
         self.X_train = torch.tensor(x_train, dtype=torch.float32)
@@ -71,6 +82,8 @@ class neuralNetwork():
         
         finished = torch.load('models/LinRegNN.pt')
         self.model.load_state_dict(finished)
+        #skljson.to_json(self.scaler, 'jsonScaler.json')
+        #self.saveScaler()
         
     def plotTrainingHistory(self):
         if (self.best_MAE < self.global_best_MAE):
@@ -152,6 +165,21 @@ class neuralNetwork():
         plt.plot(exp, 'b', linewidth=1)
         plt.plot(inf, 'r', linewidth=2)
         plt.show()
-        print(f'AVG absolute inference:{np.mean(inf)}')
-        print(f'MAX absolute inference:{np.max(inf)}')
-        print(f'MIN absolute inference:{np.min(inf)}')
+        print(f'AVG MAE:{np.mean(inf)}')
+        print(f'MAX MAE:{np.max(inf)}')
+        print(f'MIN MAE:{np.min(inf)}')
+
+
+    def saveScaler(self):
+        dict = self.scaler.__dict__
+        import json
+        for k, v in dict.items():
+            if isinstance(v, np.int64):
+                dict[k] = int(v)
+            if isinstance(v, np.ndarray):
+                if  k[-1:] == '_':
+                    dict[k] = v.tolist()
+
+        with open('service/sk_scaler.json', 'w', encoding='utf-8') as f:
+            json.dump(dict, f, ensure_ascii=False, indent=4)
+

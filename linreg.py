@@ -69,8 +69,10 @@ class LinearRegressionNN():
 
         torch.onnx.export(
             self.linreg.model,
-            X_test[0: 6],
+            X_test[0],
             "models/linreg_OnnxModel.onnx", # where to save the model
-            export_params = True, # store the trained parameter weights inside the model file
-            opset_version = 10 #onnx version to export to
-)
+            verbose = True
+
+            #export_params = True, # store the trained parameter weights inside the model file
+            #opset_version = 18 #onnx version to export to
+        )
