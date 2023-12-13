@@ -44,7 +44,7 @@
                   </v-timeline-item>
 
                   <v-timeline-item dot-color="primary" width="100%">
-                    <v-card-title>Editor's choice (Y/N)</v-card-title>
+                    <v-card-title>Editor's choice (N/Y)</v-card-title>
                     <v-switch
                       v-model="selectedEditorsChoice"
                       :inset="true"
