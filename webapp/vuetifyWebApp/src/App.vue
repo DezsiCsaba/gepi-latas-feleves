@@ -9,9 +9,9 @@
         </v-app-bar>
         <v-main>
           <div style="display: flex; flex-direction: row; align-items: flex-start">
-            <div style="width: 100%; padding: 20px 300px 20px 300px; margin: 10px; display: flex; align-items: start; flex-direction: column">
+            <div style="width: 100%; padding: 20px 15vw 20px 15vw; margin: 10px; display: flex; align-items: start; flex-direction: column">
 
-              <v-card style="width: 100%; height: 100%; margin: 10px; padding: 20px; display: flex; justify-items: start; flex-direction: column">
+              <v-card style="width: 100%; height: 100%; margin: 10px; padding: 1vw; display: flex; justify-items: start; flex-direction: column">
                 <v-card-title>Inputs of the model</v-card-title>
                 <v-timeline
                   align="start"
