@@ -157,7 +157,7 @@
     logFunctinStart('Prediction with input data')
     try{
       const session = await InferenceSession.create(
-          './public/onnx_model.onnx',
+          './onnx_model.onnx',
           {
             executionProviders: ["webgl"]
           }
