@@ -18,6 +18,7 @@
                   direction="vertical"
                 >
                   <v-timeline-item dot-color="primary">
+                    <v-card-title>Platform and Genre</v-card-title>
                     <v-autocomplete
                       v-model="selectedPlatform"
                       variant="underlined"
@@ -26,10 +27,8 @@
                       label="Platform"
                       :items="platformList"
                       :hide-selected="true"
+                      prepend-inner-icon="mdi-controller-classic-outline"
                     ></v-autocomplete>
-                  </v-timeline-item>
-
-                  <v-timeline-item dot-color="primary">
                     <v-autocomplete
                       v-model="selectedGenre"
                       variant="underlined"
@@ -38,22 +37,42 @@
                       label="Genre"
                       :items="genreList"
                       :hide-selected="true"
+                      prepend-inner-icon="mdi-script-text-outline"
                     ></v-autocomplete>
                   </v-timeline-item>
-
 
                   <v-timeline-item dot-color="primary">
                     <v-card-title>Editor's choice (Y/N)</v-card-title>
                     <v-switch
                       v-model="selectedEditorsChoice"
                       :inset="true"
+                      base-color="primary"
                     ></v-switch>
                   </v-timeline-item>
 
-
                   <v-timeline-item dot-color="primary">
                     <v-card-title>Date of release:</v-card-title>
-                    <v-date-picker></v-date-picker>
+
+                    <v-menu
+                      :close-on-content-click="false"
+                    >
+                      <template v-slot:activator="{props}">
+                        <v-text-field
+                          v-bind="props"
+                          label="Release date"
+                          prepend-inner-icon="mdi-calendar-range"
+                          variant="underlined"
+                          base-color="primary"
+                          :model-value="formatedDate"
+                        ></v-text-field>
+                      </template>
+                      <v-date-picker
+                        v-model="releaseDate"
+                        color="secondary"
+                      ></v-date-picker>
+                    </v-menu>
+
+
                   </v-timeline-item>
 
                 </v-timeline>
@@ -90,109 +109,151 @@
 </template>
 
 <script setup>
+  const showInnerLogs = false
+  const showFunctionLogs = false
+  const showPredVal = true
 
-const showInnerLogs = false
-const showFunctionLogs = false
-const showPredVal = true
+  import platformNames from '../../../service/platformName.json'
+  import genreNames from '../../../service/genreName.json'
+  // import editorsChoice from '../../../service/editorsChoice.json'
+  import scalerImport from '../../../service/sk_scaler.json'
 
-import platformNames from '../../../service/platformName.json'
-import genreNames from '../../../service/genreName.json'
-// import editorsChoice from '../../../service/editorsChoice.json'
-import scalerImport from '../../../service/sk_scaler.json'
+  import {computed, onBeforeMount, ref} from "vue";
+  import {InferenceSession, Tensor} from "onnxruntime-web";
+  import * as tf from '@tensorflow/tfjs'
+  import * as sk from 'scikitjs'
+  import {format} from 'date-fns'
 
-import {onBeforeMount, ref} from "vue";
-import {InferenceSession, Tensor} from "onnxruntime-web";
-import * as tf from '@tensorflow/tfjs'
-import * as sk from 'scikitjs'
+  //#region props
+  const platformList = []
+  const platformIndexes = []
+  const genreList = []
+  const genreIndexes = []
 
-//#region props
-const platformList = []
-const platformIndexes = []
-const genreList = []
-const genreIndexes = []
-
-let selectedPlatform = ref('PlayStation 4')
-let selectedGenre = ref('Adventure, RPG')
-let selectedEditorsChoice = ref(true)
-let prediction = ref('NAN')
-
-let platformInt
-let genreInt
-let editorsChoiceInt
-
-defineExpose({
-  selectedPlatform, selectedGenre, selectedEditorsChoice,
-
-  platformInt, genreInt, editorsChoiceInt
-})
-//#endregion
-
-//#region getDataFromFrontEnd
-function setLists(){
-  Object.keys(platformNames).forEach((key) => {
-    platformIndexes.push(key)
-    platformList.push(platformNames[key])
-  })
-  Object.keys(genreNames).forEach((key) => {
-    genreIndexes.push(key)
-    genreList.push(genreNames[key])
-  })
-}
-function getMatchingIndex(lookup, input){
-  let keyVal = null
-  Object.keys(lookup).forEach((key)=>{
-    if (lookup[key] === input) {
-      keyVal = key
-      return
+  let releaseDate = ref(new Date())
+  let formatedDate = computed({
+    get() {
+      return format(releaseDate.value, 'YYY MMM d')
+    },
+    set(newValue) {
+      releaseDate.value = newValue
     }
   })
-  return keyVal
-}
-function setUpPredictData() {
-  console.clear()
-  logFunctinStart('The input from the front:')
 
-  platformInt = getMatchingIndex(platformNames, selectedPlatform.value)
-  genreInt = getMatchingIndex(genreNames, selectedGenre.value)
-  editorsChoiceInt = selectedEditorsChoice.value === true ?10 : 20
+  let selectedPlatform = ref('PlayStation 4')
+  let selectedGenre = ref('Adventure, RPG')
+  let selectedEditorsChoice = ref(true)
+  let prediction = ref('NAN')
 
-  logInsideOfFunction(`platform = ${platformInt},\n\tgenre = ${genreInt},\n\teditor's choice = ${editorsChoiceInt}`)
-}
-//#endregion
 
-async function preProcessData() {
-  logFunctinStart('Preprocessing data')
-  // const standardScaler = createScaler()
+  let platformInt
+  let genreInt
+  let editorsChoiceInt
 
-  let scaler = new sk.StandardScaler()
+  defineExpose({
+    selectedPlatform, selectedGenre, selectedEditorsChoice,
 
-  let x_test = [[1, 1, 10, 2010, 1, 1]]
-  let x = [[+platformInt, +genreInt, +editorsChoiceInt, 2010, 1, 1]]
+    platformInt, genreInt, editorsChoiceInt
+  })
+  //#endregion
 
-  scaler.withMean = scalerImport.with_mean
-  scaler.withStd = scalerImport.with_std
-  scaler.copy = scalerImport.copy
-  scaler.featureNamesIn = scalerImport.feature_names_in_
-  scaler.nFeaturesIn = scalerImport.n_features_in_
-  scaler.nSamplesSeen = scalerImport.n_samples_seen_
-  scaler.mean = tf.tensor(scalerImport.mean_)
-  scaler.scale = tf.tensor(scalerImport.scale_)
+  //#region getDataFromFrontEnd
+  function setLists(){
+    Object.keys(platformNames).forEach((key) => {
+      platformIndexes.push(key)
+      platformList.push(platformNames[key])
+    })
+    Object.keys(genreNames).forEach((key) => {
+      genreIndexes.push(key)
+      genreList.push(genreNames[key])
+    })
+  }
+  function getMatchingIndex(lookup, input){
+    let keyVal = null
+    Object.keys(lookup).forEach((key)=>{
+      if (lookup[key] === input) {
+        keyVal = key
+        return
+      }
+    })
+    return keyVal
+  }
+  function setUpPredictData() {
+    console.clear()
+    logFunctinStart('The input from the front:')
 
-  //let transformed = await scaler.transform(x_test).data()
-  let transformed = await scaler.transform(x).data()
+    platformInt = getMatchingIndex(platformNames, selectedPlatform.value)
+    genreInt = getMatchingIndex(genreNames, selectedGenre.value)
+    editorsChoiceInt = selectedEditorsChoice.value === true ?10 : 20
 
-  return new Tensor('float32', Float32Array.from(transformed), [1, 6])
-}
+    logInsideOfFunction(`platform = ${platformInt},\n\tgenre = ${genreInt},\n\teditor's choice = ${editorsChoiceInt}`)
+  }
+  //#endregion
 
-async function runTheModel(){
-  setUpPredictData()
-  const x_test = await preProcessData()
-  prediction.value = await pred(x_test)
-}
+  async function preProcessData() {
+    logFunctinStart('Preprocessing data')
+    // const standardScaler = createScaler()
 
-async function pred(inputData){
-  logFunctinStart('Prediction with input data')
-  try{
+    let scaler = new sk.StandardScaler()
+
+    //let x_test = [[1, 1, 10, 2010, 1, 1]]
+    let y = releaseDate.value.getFullYear()
+    let m = releaseDate.value.getMonth()+1
+    let d = releaseDate.value.getDate()
+    let x = [[+platformInt, +genreInt, +editorsChoiceInt, y, m, d]]
+
+    scaler.withMean = scalerImport.with_mean
+    scaler.withStd = scalerImport.with_std
+    scaler.copy = scalerImport.copy
+    scaler.featureNamesIn = scalerImport.feature_names_in_
+    scaler.nFeaturesIn = scalerImport.n_features_in_
+    scaler.nSamplesSeen = scalerImport.n_samples_seen_
+    scaler.mean = tf.tensor(scalerImport.mean_)
+    scaler.scale = tf.tensor(scalerImport.scale_)
+
+    //let transformed = await scaler.transform(x_test).data()
+    let transformed = await scaler.transform(x).data()
+
+    console.log({
+      input_before_scaling: x,
+      input_after_scaling: transformed
+    })
+
+    return new Tensor('float32', Float32Array.from(transformed), [1, 6])
+  }
+
+  async function runTheModel(){
+    setUpPredictData()
+    const x_test = await preProcessData()
+    prediction.value = await pred(x_test)
+  }
+
+  async function pred(inputData){
+    logFunctinStart('Prediction with input data')
+    try{
+      const session = await InferenceSession.create(
+        './public/onnx_model.onnx',
+        {
+          executionProviders: ["webgl"]
+        }
+      )
+
+      console.log({inputData: inputData})
+      const outputMap = await session.run({'onnx::Gemm_0': inputData})
+
+      let y_pred = null
+      Object.keys(outputMap).forEach((key) => y_pred = outputMap[key].data[0])
+
+      logYpred({inputs: inputData.data, y_pred: y_pred})
+      logYpred(`${y_pred.toString().slice(0, 7)}`)
+      return `${y_pred.toString().slice(0, 7)}`
+    }catch (err){
+      console.error(err.stack)
+    }
+  }
+
+  async function test(){
+    logFunctinStart('test prediction with tensor.ones')
     const session = await InferenceSession.create(
       './public/onnx_model.onnx',
       {
@@ -200,60 +261,37 @@ async function pred(inputData){
       }
     )
 
-    console.log({inputData: inputData})
-    const outputMap = await session.run({'onnx::Gemm_0': inputData})
+    const inputs = new Tensor('float32', Float32Array.from([1, 1, 1, 1, 1, 1]), [1,6])
+    const outputMap = await session.run({'onnx::Gemm_0': inputs})
 
     let y_pred = null
     Object.keys(outputMap).forEach((key) => y_pred = outputMap[key].data[0])
 
-    logYpred({inputs: inputData.data, y_pred: y_pred})
     logYpred(`${y_pred.toString().slice(0, 7)}`)
-    return `${y_pred.toString().slice(0, 7)}`
-  }catch (err){
-    console.error(err.stack)
   }
-}
 
-async function test(){
-  logFunctinStart('test prediction with tensor.ones')
-  const session = await InferenceSession.create(
-    './public/onnx_model.onnx',
-    {
-      executionProviders: ["webgl"]
-    }
-  )
+  function createArrayFromJSON(jsonObj){
+    let out = []
+    Object.keys(jsonObj).forEach((key) => {
+      out.push(jsonObj[key])
+    })
+    return out
+  }
 
-  const inputs = new Tensor('float32', Float32Array.from([1, 1, 1, 1, 1, 1]), [1,6])
-  const outputMap = await session.run({'onnx::Gemm_0': inputs})
+  //#region loggers
+  function logFunctinStart(input){
+    showFunctionLogs && console.log('>>>', input)
+  }
+  function logInsideOfFunction(input){
+    showInnerLogs && console.log('\t', input)
+  }
+  function logYpred(input){
+    showPredVal && console.log('\t< pred >', input)
+  }
+  //#endregion
 
-  let y_pred = null
-  Object.keys(outputMap).forEach((key) => y_pred = outputMap[key].data[0])
-
-  logYpred(`${y_pred.toString().slice(0, 7)}`)
-}
-
-function createArrayFromJSON(jsonObj){
-  let out = []
-  Object.keys(jsonObj).forEach((key) => {
-    out.push(jsonObj[key])
+  onBeforeMount(()=> {
+    setLists()
+    sk.setBackend(tf)
   })
-  return out
-}
-
-//#region loggers
-function logFunctinStart(input){
-  showFunctionLogs && console.log('>>>', input)
-}
-function logInsideOfFunction(input){
-  showInnerLogs && console.log('\t', input)
-}
-function logYpred(input){
-  showPredVal && console.log('\t< pred >', input)
-}
-//#endregion
-
-onBeforeMount(()=> {
-  setLists()
-  sk.setBackend(tf)
-})
 </script>
